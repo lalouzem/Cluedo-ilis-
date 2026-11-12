@@ -1,78 +1,70 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Cluedo ILIS 3D</title><script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-<style>
-*{box-sizing:border-box}body{margin:0;background:#152a34;color:#eff5f1;font:16px system-ui}button,select{font:inherit}button{border:1px solid #688b95;border-radius:10px;background:#183945;color:#fff;padding:12px 17px;cursor:pointer}button:hover{background:#315c69}button:focus-visible{outline:3px solid #e9c483}h1{font:clamp(35px,6vw,66px) Georgia;margin:12px 0}h2{font:30px Georgia;margin:10px 0}p{line-height:1.6}.gold{background:#dfbf88;color:#162f39;border:0}#start{position:fixed;inset:0;z-index:15;display:grid;place-items:center;background:linear-gradient(120deg,#10252df5,#172f39cf)}.intro{max-width:710px;padding:28px}.intro small{color:#b4c8ce}#hud{position:fixed;top:14px;left:16px;right:16px;z-index:5;pointer-events:none;display:flex;justify-content:space-between;gap:12px}#hud button{pointer-events:auto}#where{background:#102a36da;padding:12px;border-radius:10px}#tip{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:5;max-width:48%;background:#102a36df;padding:12px 20px;border-radius:12px;text-align:center;pointer-events:none}#dot{position:fixed;left:50%;top:50%;width:6px;height:6px;border:1px solid #fff;border-radius:50%;pointer-events:none;z-index:3}#touch{position:fixed;bottom:24px;left:20px;z-index:5;display:grid;grid-template-columns:repeat(3,48px);gap:5px}#touch button{height:48px;padding:4px;touch-action:none;background:#204855bc}#use{position:fixed;bottom:34px;right:20px;z-index:5}.modal{position:fixed;inset:8% 12%;z-index:12;background:#112b35f7;border:1px solid #6c929e;border-radius:16px;padding:24px;overflow:auto;display:none}.row{display:flex;gap:9px;flex-wrap:wrap}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.card{background:#25434c;padding:14px;border-radius:10px}.card img{height:100px;width:100px;object-fit:contain}.note{padding:12px;border-left:3px solid #e4c38c;margin:10px 0;background:#203c46}select{display:block;width:100%;padding:12px;margin:8px 0 18px;background:#25434c;color:white;border-radius:8px}a{color:#e7c58c}.hidden{display:none!important}@media(max-width:650px){.modal{inset:5% 3%}#where{font-size:12px}#hud button{padding:9px;font-size:13px}#tip{font-size:12px;bottom:145px;max-width:90%;width:90%}.intro{padding:22px}#touch{grid-template-columns:repeat(3,42px)}}
-</style></head><body>
-<div id="start"><div class="intro"><small>ENQUÊTE IMMERSIVE · META QUEST / TABLETTE / ORDINATEUR</small><h1>Cluedo ILIS</h1><h2>Le trophée disparu</h2><p>Entre dans le bâtiment, parcours les salles et rencontre les sept personnages. Retrouve qui a déplacé le trophée, avec quel objet et dans quel lieu.</p><p>Ordinateur · ZQSD / WASD ou flèches, souris glissée pour regarder, E pour agir.<br>Tablette · flèches tactiles, glisser sur le décor, bouton Agir.<br>Quest · stick gauche pour marcher, droit pour tourner, gâchette pour sélectionner au laser.</p><p><small>Reconstitution inspirée de tes croquis et de photos publiques. Dimensions et raccords des ailes interprétés. Personnages stylisés, scénario entièrement fictif.</small></p><div class="row"><button class="gold" id="play" disabled>Chargement du bâtiment…</button><button id="vrstart">Entrer en VR</button></div><p id="bootstatus"></p></div></div>
-<div id="hud"><div id="where">ILIS</div><div class="row"><button id="book">Carnet</button><button id="accuse">Accuser</button><button id="help">Aide</button></div></div><div id="dot"></div><div id="tip">Explore le hall.</div>
-<div id="touch"><span></span><button data-move="forward">▲</button><span></span><button data-move="left">◀</button><button data-move="back">▼</button><button data-move="right">▶</button></div><button id="use" class="gold">Agir</button><div id="modal" class="modal"></div>
-<a-scene id="scene" loading-screen="enabled:false" renderer="antialias:true; colorManagement:true; foveationLevel:1" vr-mode-ui="enabled:true" background="color:#b7d5df">
-<a-entity id="rig"><a-entity id="cam" camera="near:0.05;far:250" position="0 1.65 0" look-controls="pointerLockEnabled:false;magicWindowTrackingEnabled:false"></a-entity><a-entity id="left" laser-controls="hand:left"></a-entity><a-entity id="right" laser-controls="hand:right"></a-entity></a-entity>
-</a-scene>
-<script>
-'use strict';
-const $=id=>document.getElementById(id);
-const people=['Daphné Salerno','Fabio Boudis','Sébastien Gosselin','Francisco Mananga','Valentine Baert','Valérie Habracken','Audrey Hayet'];
-const objects=['Chariot','Sac de sport','Mallette','Boîte d’archives','Drap de cérémonie','Valise'];
-const hiding=['Amphi A','Amphi B','LEXIM','Info 2','Cafétéria étudiante','RU L’Épi'];
-const choices=[people,objects,hiding],key='ilis-3d-v1';
-const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
-let game,active=false,level=0,world,colliders=[],targets=[],rooms=[],photos={},modalOpen=false;
-function fresh(){const solution=choices.map(a=>Math.floor(Math.random()*a.length));const clues=[];choices.forEach((a,k)=>a.forEach((_,i)=>{if(solution[k]!==i)clues.push({k,i})}));return {version:1,solution,clues:shuffle(clues),found:[],won:false,attempts:0}}
-try{game=JSON.parse(localStorage.getItem(key));if(!game||game.version!==1||game.clues.length!==16||!Array.isArray(game.found)||game.solution.length!==3)game=fresh()}catch{game=fresh()}
-function save(){try{localStorage.setItem(key,JSON.stringify(game))}catch{}}
-let T,scene,rig,camera,ray,clock,vrPanel,materials=new Map(),keys={},touch={},controllerLatch=0;
-function material(color){if(!materials.has(color))materials.set(color,new T.MeshStandardMaterial({color,roughness:.82}));return materials.get(color)}
-function box(x,y,z,w,h,d,color,solid=false){const m=new T.Mesh(new T.BoxGeometry(w,h,d),material(color));m.position.set(x,y,z);world.add(m);if(solid)colliders.push({x,z,w,d});return m}
-function label(text,x,y,z,width=3,height=.65,bg='#173d51'){const c=document.createElement('canvas');c.width=768;c.height=Math.round(768*height/width);const ctx=c.getContext('2d');ctx.fillStyle=bg;ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#ffffff';ctx.textAlign='center';ctx.textBaseline='middle';const lines=text.split('\n');ctx.font=Math.min(42,c.height/(lines.length+1))+'px sans-serif';lines.forEach((l,i)=>ctx.fillText(l,c.width/2,(i+1)*c.height/(lines.length+1),c.width-25));const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;const m=new T.Mesh(new T.PlaneGeometry(width,height),new T.MeshBasicMaterial({map:tex,side:T.DoubleSide}));m.position.set(x,y,z);world.add(m);return m}
-function action(mesh,title,fn){mesh.userData.action=fn;mesh.userData.title=title;targets.push(mesh);return mesh}
-function note(i,x,z){box(x,.75,z,1.2,.12,.7,'#bda27b',true);const m=box(x,.88,z,.5,.09,.35,game.found.includes(i)?'#548d78':'#e1ba52');action(m,'Lire l’indice',()=>discover(i));const l=label('INDICE '+(i+1),x,1.2,z,.95,.22,'#745b28');action(l,'Lire l’indice',()=>discover(i))}
-function clue(c){return c.k===0?people[c.i]+' dispose d’un alibi vérifié.':c.k===1?'L’objet « '+objects[c.i]+' » est resté dans son rangement fermé.':'Le trophée ne se trouve pas dans « '+hiding[c.i]+' ».'}
-function discover(i){if(!game.found.includes(i)){game.found.push(i);save()}const text=clue(game.clues[i]);$('tip').textContent=text;showPanel('Indice '+(i+1),text);refreshHUD()}
-function desk(x,z,computer=false){box(x,.7,z,1.25,.08,.65,'#c1aa85',true);box(x,.32,z,.08,.65,.5,'#667982');box(x,.43,z+.63,.5,.12,.48,'#317a9e');box(x,.75,z+.83,.5,.6,.08,'#317a9e');if(computer){box(x,1.02,z-.08,.65,.42,.06,'#20313b');box(x,1.03,z-.041,.55,.32,.01,'#599cae')}}
-function room(name,cx,cz,w=8,d=7,type='class',index=null,npc=null,side=-1){
-rooms.push({name,x:cx,z:cz,w,d});box(cx,-.13,cz,w,.25,d,'#c6c9c6');box(cx,3.35,cz,w,.12,d,'#e3e5df');
-box(cx,1.65,cz-d/2,w,3.3,.16,'#e8e3d5',true);box(cx,1.65,cz+d/2,w,3.3,.16,'#e8e3d5',true);
-box(cx+side*w/2,1.65,cz,.16,3.3,d,'#e8e3d5',true);
-const doorX=cx-side*w/2;box(doorX,1.65,cz-d/2+(d-2)/4,.16,3.3,(d-2)/2,'#e2dfd4',true);box(doorX,1.65,cz+d/2-(d-2)/4,.16,3.3,(d-2)/2,'#e2dfd4',true);box(doorX,2.95,cz,.18,.8,2,'#477e96',false);
-const sign=label(name,doorX-side*.15,2.55,cz,2.5,.42);sign.rotation.y=side<0?Math.PI/2:-Math.PI/2;
-box(cx+side*(w/2-.1),1.8,cz, .05,1.4,d*.55,'#a3cbdc');
-if(type==='amphi'){for(let row=0;row<4;row++){box(cx,.09+row*.1,cz+row*1.3-1,w-.8,.18+row*.2,.9,'#7d929c');for(let col=-2;col<=2;col++){box(cx+col*1.15,.55+row*.1,cz+row*1.3-1,.65,.12,.65,'#236a91');box(cx+col*1.15,.95+row*.1,cz+row*1.3-.7,.65,.75,.1,'#236a91')}}label('ILIS · Amphithéâtre',cx,2,cz-d/2+.12,5,1.2,'#e9e8d9')}
-else if(type==='cafe'){for(let x=-2;x<=2;x+=4)for(let z=-1;z<=2;z+=3)desk(cx+x,cz+z);box(cx,1,cz-d/2+.6,w-1,2,.6,'#becbd0');label('Cafétéria',cx,2.5,cz-d/2+.96,3,.6)}
-else if(type==='lexim'){box(cx,1,cz-d/2+.35,5,2,.2,'#253d58');label('LEXIM · Réalité immersive',cx,2.4,cz-d/2+.48,5,.5);for(let x=-2;x<=2;x+=4){desk(cx+x,cz,true);box(cx+x,1,cz,.3,.2,.2,'#f4f5f3')}}
-else{for(let x=-2;x<=2;x+=4)for(let z=0;z<=2;z+=2)desk(cx+x,cz+z,type==='info');label(name,cx,2,cz-d/2+.12,4,.8,'#f0ede3')}
-if(index!==null)note(index,cx,cz-2);if(npc!==null)person(npc,cx+2.6,cz-2);
-}
-function person(i,x,z){const body=box(x,.95,z,.5,.9,.32,['#4e687e','#a08566','#36687a','#55586b','#4c7880','#8b6c7d','#7b8660'][i]);const head=new T.Mesh(new T.SphereGeometry(.19,12,10),material('#bc9a80'));head.position.set(x,1.64,z);world.add(head);box(x-.14,.28,z,.18,.55,.2,'#293744');box(x+.14,.28,z,.18,.55,.2,'#293744');action(body,'Parler à '+people[i],()=>showPanel(people[i],'Explore les documents dorés dans les salles. Les alibis sont consignés dans ton carnet.'));const tag=label(people[i],x,2.15,z,2,.4);action(tag,'Parler à '+people[i],body.userData.action);
-const owner=world;if(photos[i])new T.TextureLoader().load(photos[i],tex=>{tex.colorSpace=T.SRGBColorSpace;const pic=new T.Mesh(new T.PlaneGeometry(.75,.75),new T.MeshBasicMaterial({map:tex,side:T.DoubleSide}));pic.position.set(x,2.85,z);if(world===owner)world.add(pic);else{tex.dispose();pic.geometry.dispose();pic.material.dispose()}});
-}
-function stairs(x,z,to,title){for(let i=0;i<7;i++)box(x,.09+i*.09,z-i*.26,2,.18+i*.18,.26,'#70899a');const sign=label(title,x,1.9,z,3,.7);action(sign,title,()=>loadLevel(to));}
-function loadLevel(n){level=n;if(world){scene.object3D.remove(world);world.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material?.map){o.material.map.dispose();o.material.dispose()}})}world=new T.Group();scene.object3D.add(world);colliders=[];targets=[];rooms=[];vrPanel=null;rig.object3D.position.set(n===3?24:0,0,5);camera.components['look-controls'].yawObject.rotation.y=0;rig.object3D.rotation.y=0;
-const wingXs=n===3?[24]:[0,24];for(const x of wingXs){box(x,-.12,-18,4,.24,52,'#c1c7c7');box(x,3.4,-18,4,.15,52,'#e7e8e2');for(let z=5;z>-43;z-=5){box(x,3.27,z,1.6,.05,.45,'#ffffff');box(x,0,z,4,.015,.035,'#82979b')}box(x,1.7,-44,4,3.4,.2,'#e2dfd4',true)}
-if(n<3){box(12,-.12,5,28,.24,5,'#c1c7c7');box(12,3.4,5,28,.15,5,'#e7e8e2');box(12,1.7,7.5,18,3.4,.2,'#a5c8d3',true);label('ILIS   /   '+['Rez-de-chaussée','Premier étage','Deuxième étage'][n],12,2.3,2.7,7,.6)}
-if(n===0){room('Accueil',-6,0,8,6,'class',0,6);['005','004','003','002','001'].forEach((v,i)=>room('Salle '+v,-6,-7-i*6,8,6,'class',i===1?1:i===3?2:null));room('Amphi A',-6,-40,12,10,'amphi',3);room('Hall des rencontres',30,-5,8,12,'class',null);stairs(0,1,1,'Monter au 1er');stairs(0,-31,1,'Escalier · 1er');
-box(7,-.24,30,72,.3,40,'#9caaa0');box(7,-.05,17,60,.05,4,'#73818b');label('Rue Ambroise Paré',10,1.8,20,5,.6);box(30,3,34,13,6,9,'#e5decc');label('RU L’Épi',30,3,29.4,5,1);note(15,29,27);for(let i=0;i<6;i++){box(-20+i*5,.07,33,2,.05,6,'#d9dfdb');box(-20+i*5,.65,33,1.8,1.2,3.7,['#526b82','#bb7661','#e4e4df'][i%3])}for(const x of [-18,15,40]){box(x,1.4,25,.3,2.8,.3,'#7b6950');const crown=new T.Mesh(new T.SphereGeometry(1.7,8,8),material('#638b67'));crown.position.set(x,3.6,25);world.add(crown)}}
-if(n===1){room('Salle de réunion',-6,0,8,6,'class',4,0);['105','104','103','102','101'].forEach((v,i)=>room('Salle '+v,-6,-7-i*6,8,6,'class',i===2?5:null));room('Amphi B',-6,-40,12,10,'amphi',6,2);['109','110','111','112'].forEach((v,i)=>room('Salle '+v,18,-5-i*8,8,8,'class',i===1?7:null,null));room('Amphi C',30,-29,8,12,'amphi',null,3,1);room('Toilettes H / F',30,-4,8,8,'class',null,null,1);stairs(0,1,0,'Descendre au RDC');stairs(0,-31,2,'Monter au 2e');stairs(24,1,2,'Monter au 2e');}
-if(n===2){room('Café des profs',6,-2,8,6,'cafe',null,null,1);room('Info 1',-6,-9,8,8,'info',8,1);room('Info 2',-6,-18,8,8,'info',9);room('Info 3',-6,-27,8,8,'info',null);room('Salle des profs',-6,-36,12,9,'class',10);room('LEXIM',18,-13,8,10,'lexim',11);room('Classe',30,-9,8,8,'class',null,5,1);room('Classe',30,-19,8,8,'class',null,null,1);room('Amphi D',18,-30,8,12,'amphi',12);room('Palier amphi C',30,-30,8,12,'amphi',null,null,1);room('Toilettes H / F',18,-3,8,6,'class');stairs(0,1,1,'Descendre au 1er');stairs(24,1,1,'Descendre au 1er');stairs(24,-25,3,'Monter au 3e');for(let z=-6;z>-22;z-=.7)box(21.8,.6,z,.06,1.2,.06,'#587d94');}
-if(n===3){room('Cafétéria étudiante',17,-6,10,16,'cafe',13);room('Salle à préciser',18,-20,8,8,'class');room('Administration',18,-30,12,12,'class',14,4);room('Toilettes',30,-4,8,6,'class',null,null,1);room('Toilettes',30,-11,8,6,'class',null,null,1);stairs(24,-25,2,'Descendre au 2e');}
-label('Carnet',wingXs[0],2.2,-43.7,2,.5).userData.title='Carnet';const board=world.children.at(-1);action(board,'Ouvrir le carnet',openBook);refreshHUD();
-}
-function refreshHUD(){const pos=rig.object3D.position;const r=rooms.find(r=>Math.abs(pos.x-r.x)<r.w/2&&Math.abs(pos.z-r.z)<r.d/2);$('where').textContent=['RDC','1er étage','2e étage','3e étage'][level]+' · '+(r?.name||(pos.z>9?'Abords':'Couloir'))+' · '+game.found.length+'/16 indices';}
-function closePanel(){if(vrPanel){world.remove(vrPanel);vrPanel.traverse(o=>{const i=targets.indexOf(o);if(i>=0)targets.splice(i,1);if(o.geometry)o.geometry.dispose();if(o.material?.map){o.material.map.dispose();o.material.dispose()}});vrPanel=null}$('modal').style.display='none';modalOpen=false}
-function showPanel(title,text,buttons=[]){closePanel();if(scene.is('vr-mode')){vrPanel=new T.Group();const pos=new T.Vector3(),dir=new T.Vector3();camera.object3D.getWorldPosition(pos);camera.object3D.getWorldDirection(dir);dir.negate();dir.y=0;dir.normalize();vrPanel.position.copy(pos.addScaledVector(dir,2.4));vrPanel.rotation.y=Math.atan2(dir.x,dir.z)+Math.PI;world.add(vrPanel);
-const lines=[];let line='';for(const word of text.split(' ')){if((line+' '+word).length>48){lines.push(line);line=word}else line+=' '+word}lines.push(line);const m=label(title+'\n'+lines.join('\n'),0,.4,0,3.4,1.5);world.remove(m);vrPanel.add(m);
-[...buttons,{name:'Fermer',fn:closePanel}].forEach((b,i)=>{const o=label(b.name,(i%2===0?-.83:.83),-.55-Math.floor(i/2)*.38,.03,1.58,.32,'#3e6474');world.remove(o);vrPanel.add(o);action(o,b.name,b.fn)});return}
-modalOpen=true;$('modal').innerHTML='<h2>'+title+'</h2><p>'+text+'</p><div class="row">'+buttons.map((b,i)=>'<button data-option="'+i+'">'+b.name+'</button>').join('')+'<button id="close">Fermer</button></div>';$('modal').style.display='block';$('close').onclick=closePanel;buttons.forEach((b,i)=>document.querySelector('[data-option="'+i+'"]').onclick=b.fn);}
-function openBook(){const excluded=[[],[],[]];game.found.forEach(i=>excluded[game.clues[i].k].push(game.clues[i].i));const remaining=choices.map((a,k)=>a.filter((_,i)=>!excluded[k].includes(i)).join(', '));showPanel('Carnet · '+game.found.length+'/16 indices','Possibilités restantes. Personne : '+remaining[0]+'. Objet : '+remaining[1]+'. Lieu : '+remaining[2]+'.',[{name:'Accuser',fn:()=>accusation()}]);if(!scene.is('vr-mode')){$('modal').insertAdjacentHTML('beforeend',game.found.map(i=>'<div class="note">'+clue(game.clues[i])+'</div>').join(''))}}
-function accusation(step=0,picks=[]){if(game.won){showPanel('Affaire résolue',people[game.solution[0]]+' avait déplacé le trophée vers '+hiding[game.solution[2]]+' avec '+objects[game.solution[1]]+' pour préparer une surprise lors de la cérémonie.');return}showPanel(['Qui ?','Avec quel objet ?','Dans quel lieu ?'][step],'Sélectionne ta conclusion.',choices[step].map((name,i)=>({name,fn:()=>{const next=[...picks,i];if(step<2)accusation(step+1,next);else{game.attempts++;game.won=next.every((v,k)=>v===game.solution[k]);save();showPanel(game.won?'Trophée retrouvé !':'Enquête à poursuivre',game.won?'Bravo ! Le déplacement préparait une surprise pour la cérémonie. Tu as résolu l’affaire en '+game.attempts+' tentative(s).':'Cette combinaison ne correspond pas aux indices. Reprends ton carnet.')}}})))}
-function help(){showPanel('Se déplacer et enquêter','ZQSD / WASD ou flèches pour marcher. Glisser pour regarder. E ou Agir pour sélectionner le document visé à moins de 4 mètres. Les panneaux des escaliers changent d’étage. Quest : sticks et lasers, poignées gauche pour le carnet et droite pour accuser. Dimensions interprétées à partir des croquis. Sauvegarde automatique des indices.',[{name:'Carnet',fn:openBook},{name:'Nouvelle enquête',fn:()=>showPanel('Recommencer ?','La progression sera remplacée.',[{name:'Confirmer',fn:()=>{game=fresh();save();closePanel();loadLevel(0)}}])}])}
-function blocked(x,z){if(level===0&&(z>8||(z>7&&Math.abs(x)<1.8))){return Math.abs(x)>48||z>48}const corridors=(Math.abs(x)<1.8&&z>-43&&z<7.3&&level<3)||(Math.abs(x-24)<1.8&&z>-43&&z<7.3)||(level<3&&x>-2&&x<26&&z>2.6&&z<7.3);const inRoom=rooms.some(r=>Math.abs(x-r.x)<r.w/2&&Math.abs(z-r.z)<r.d/2);const bridge=rooms.some(r=>Math.abs(z-r.z)<.8&&Math.abs(x-r.x)<r.w/2+1);if(!corridors&&!inRoom&&!bridge)return true;return colliders.some(c=>Math.abs(x-c.x)<c.w/2+.2&&Math.abs(z-c.z)<c.d/2+.2)}
-function interact(origin=null,direction=null){if(!active)return;ray.setFromCamera(new T.Vector2(0,0),scene.camera);if(origin)ray.set(origin,direction);world.updateMatrixWorld(true);const hits=ray.intersectObjects(vrPanel?vrPanel.children:world.children,true).filter(h=>h.distance<4);if(hits.length&&hits[0].object.userData.action)hits[0].object.userData.action()}
-function tick(_,delta){if(!active||!world)return;const dt=Math.min((delta||16)/1000,.04);let forward=(keys.KeyW||keys.KeyZ||keys.ArrowUp||touch.forward?1:0)-(keys.KeyS||keys.ArrowDown||touch.back?1:0);let side=(keys.KeyD||keys.ArrowRight||touch.right?1:0)-(keys.KeyA||keys.KeyQ||keys.ArrowLeft||touch.left?1:0);
-const session=scene.renderer.xr.getSession();if(session){for(const input of session.inputSources){const a=input.gamepad?.axes||[];if(input.handedness==='left'){side+=a[2]||0;forward-=a[3]||0}if(input.handedness==='right'&&Math.abs(a[2]||0)>.65&&performance.now()>controllerLatch){rig.object3D.rotation.y-=Math.sign(a[2])*Math.PI/6;controllerLatch=performance.now()+350}}}if(!modalOpen&&!vrPanel){const dir=new T.Vector3();scene.camera.getWorldDirection(dir);dir.y=0;dir.normalize();const right=new T.Vector3(-dir.z,0,dir.x);const move=dir.multiplyScalar(forward).add(right.multiplyScalar(side));if(move.length()>1)move.normalize();move.multiplyScalar(dt*2.6);const p=rig.object3D.position;if(!blocked(p.x+move.x,p.z))p.x+=move.x;if(!blocked(p.x,p.z+move.z))p.z+=move.z;}refreshHUD();
-}
-function init(){T=AFRAME.THREE;scene=$('scene');rig=$('rig');camera=$('cam');ray=new T.Raycaster();scene.object3D.add(new T.HemisphereLight('#eaf5ff','#8b8170',2.3));const sun=new T.DirectionalLight('#fff3d8',1.2);sun.position.set(10,25,18);scene.object3D.add(sun);loadLevel(0);$('play').disabled=false;$('play').textContent='Entrer dans l’ILIS';$('play').onclick=()=>{active=true;$('start').classList.add('hidden')};$('vrstart').onclick=async()=>{try{await scene.enterVR();active=true;$('start').classList.add('hidden')}catch{$('bootstatus').textContent='Ouvre cette page dans le navigateur du Quest pour le mode VR.'}};scene.addBehavior({tick});$('left').addEventListener('gripdown',openBook);$('right').addEventListener('gripdown',()=>accusation());['left','right'].forEach(id=>$(id).addEventListener('triggerdown',()=>{const obj=$(id).object3D;const p=new T.Vector3(),q=new T.Quaternion();obj.getWorldPosition(p);obj.getWorldQuaternion(q);interact(p,new T.Vector3(0,0,-1).applyQuaternion(q))}));fetch('portraits.json').then(r=>r.ok?r.json():{}).then(p=>{photos=p;if(!active)loadLevel(0)}).catch(()=>{});}
-window.addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='KeyE'&&!e.repeat)interact();if(e.code==='Escape')closePanel();if(e.code.startsWith('Arrow'))e.preventDefault()});window.addEventListener('keyup',e=>keys[e.code]=false);window.addEventListener('blur',()=>{keys={};touch={}});
-document.querySelectorAll('[data-move]').forEach(b=>{b.onpointerdown=e=>{b.setPointerCapture(e.pointerId);touch[b.dataset.move]=true};b.onpointerup=b.onpointercancel=()=>touch[b.dataset.move]=false});$('use').onclick=()=>interact();$('book').onclick=openBook;$('accuse').onclick=()=>accusation();$('help').onclick=help;
-window.addEventListener('error',e=>{if(!active)$('bootstatus').textContent='Chargement 3D interrompu : '+e.message+' Recharge avec WebGL activé.'});
-if(window.AFRAME){$('scene').hasLoaded?init():$('scene').addEventListener('loaded',init)}else $('bootstatus').textContent='Le moteur 3D n’a pas chargé. Vérifie la connexion puis recharge la page.';
-</script></body></html>
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d2033">
+  <title>Cluedo ILIS 3D — Le trophée disparu</title>
+  <link rel="stylesheet" href="jeu.css?v=4">
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+</head>
+<body>
+  <main id="stage" aria-label="Bâtiment universitaire en 3D">
+    <a-scene embedded id="scene" loading-screen="enabled: false"
+      renderer="antialias: true; colorManagement: true; foveationLevel: 1"
+      background="color: #b5d5e6" vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false">
+      <a-entity id="rig">
+        <a-entity id="cam" camera="near: 0.06; far: 155; fov: 74" position="0 1.65 0"
+          look-controls="magicWindowTrackingEnabled: false; touchEnabled: false; mouseEnabled: false"></a-entity>
+        <a-entity id="left" laser-controls="hand: left"></a-entity>
+        <a-entity id="right" laser-controls="hand: right"></a-entity>
+      </a-entity>
+    </a-scene>
+  </main>
+
+  <div id="hud" hidden>
+    <div class="topbar">
+      <div id="where" class="location"><span id="level">RDC</span><strong id="room">Hall d’entrée</strong></div>
+      <nav aria-label="Enquête">
+        <button id="book" type="button">Carnet <span id="count">0/16</span></button>
+        <button id="accuse" type="button">Accuser</button>
+        <button id="help" type="button">Menu</button>
+      </nav>
+    </div>
+    <div id="dot" aria-hidden="true"></div>
+    <p id="tip" role="status">Entre dans l’accueil pour commencer l’enquête.</p>
+    <div id="walk" aria-label="Commandes de déplacement">
+      <button data-move="forward" type="button" aria-label="Avancer">↑</button>
+      <button data-move="left" type="button" aria-label="Aller à gauche">←</button>
+      <button data-move="back" type="button" aria-label="Reculer">↓</button>
+      <button data-move="right" type="button" aria-label="Aller à droite">→</button>
+    </div>
+    <button id="use" type="button">Agir</button>
+  </div>
+
+  <div id="start">
+    <div class="intro">
+      <p class="campus">ILIS · Campus Santé</p>
+      <h1>Le trophée disparu</h1>
+      <p>Explore le bâtiment, parle aux personnages et trouve les indices. Qui a déplacé le trophée, avec quel objet et où l’a-t-on caché&nbsp;?</p>
+      <div class="start-buttons">
+        <button class="primary" id="play" type="button" disabled>Chargement de l’ILIS…</button>
+        <button id="vrstart" type="button" disabled>Entrer en VR</button>
+      </div>
+      <p id="bootstatus" role="status"></p>
+      <details>
+        <summary>Commandes</summary>
+        <p><b>iPad</b> · Maintiens une flèche en bas à gauche pour marcher. Glisse sur le décor pour regarder. Touche un indice ou un panneau d’escalier pour agir.</p>
+        <p><b>Ordinateur</b> · ZQSD, WASD ou flèches pour marcher. Glisse à la souris pour regarder. E pour agir.</p>
+        <p><b>Quest</b> · Stick gauche pour marcher, droit pour tourner, gâchette pour agir. Poignée gauche pour le carnet, droite pour accuser.</p>
+      </details>
+      <p class="intro-note">Jeu amateur. Intrigue fictive. Bâtiment reconstitué d’après les croquis et les photos de l’ILIS.</p>
+    </div>
+  </div>
+  <dialog id="modal" aria-labelledby="panel-title"></dialog>
+
+  <script src="campus.js?v=4"></script>
+  <script src="enquete.js?v=4"></script>
+</body>
+</html>
