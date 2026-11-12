@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0d2033">
   <title>Cluedo ILIS 3D — Le trophée disparu</title>
-  <link rel="stylesheet" href="jeu.css?v=4">
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <link rel="stylesheet" href="jeu.css?v=5">
+  <script src="vendor/aframe.min.js"></script>
 </head>
 <body>
   <main id="stage" aria-label="Bâtiment universitaire en 3D">
@@ -27,11 +27,13 @@
     <div class="topbar">
       <div id="where" class="location"><span id="level">RDC</span><strong id="room">Hall d’entrée</strong></div>
       <nav aria-label="Enquête">
+        <button id="mapbtn" type="button">Plan</button>
         <button id="book" type="button">Carnet <span id="count">0/16</span></button>
         <button id="accuse" type="button">Accuser</button>
         <button id="help" type="button">Menu</button>
       </nav>
     </div>
+    <canvas id="minimap" width="210" height="240" aria-label="Plan de l’étage et votre position"></canvas>
     <div id="dot" aria-hidden="true"></div>
     <p id="tip" role="status">Entre dans l’accueil pour commencer l’enquête.</p>
     <div id="walk" aria-label="Commandes de déplacement">
@@ -40,12 +42,13 @@
       <button data-move="back" type="button" aria-label="Reculer">↓</button>
       <button data-move="right" type="button" aria-label="Aller à droite">→</button>
     </div>
+    <div id="turn"><button id="turnleft" type="button" aria-label="Tourner à gauche">↶</button><button id="turnright" type="button" aria-label="Tourner à droite">↷</button></div>
     <button id="use" type="button">Agir</button>
   </div>
 
   <div id="start">
     <div class="intro">
-      <p class="campus">ILIS · Campus Santé</p>
+      <p class="campus">ILIS · Campus Santé · Édition 5</p>
       <h1>Le trophée disparu</h1>
       <p>Explore le bâtiment, parle aux personnages et trouve les indices. Qui a déplacé le trophée, avec quel objet et où l’a-t-on caché&nbsp;?</p>
       <div class="start-buttons">
@@ -64,7 +67,7 @@
   </div>
   <dialog id="modal" aria-labelledby="panel-title"></dialog>
 
-  <script src="campus.js?v=4"></script>
-  <script src="enquete.js?v=4"></script>
+  <script src="campus.js?v=5"></script>
+  <script src="enquete.js?v=5"></script>
 </body>
 </html>

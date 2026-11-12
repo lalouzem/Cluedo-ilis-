@@ -145,3 +145,11 @@ dialog h2 { margin: 0 0 .5em; font: 500 1.8rem Georgia, serif; }
   nav button { padding: 8px 10px; }
   #tip { bottom: max(135px, calc(env(safe-area-inset-bottom) + 120px)); max-width: 87vw; width: max-content; font-size: .86rem; }
 }
+
+/* Édition 5 : commandes séparées et plan lisible sur écran tactile. */
+#minimap {position:absolute;right:16px;top:86px;width:140px;height:160px;border:1px solid #91a7ae;border-radius:12px;opacity:.93;}
+#turn {position:absolute;right:max(18px,env(safe-area-inset-right));bottom:max(90px,calc(env(safe-area-inset-bottom) + 70px));display:flex;gap:10px;}
+#turn button {width:56px;height:52px;font-size:25px;background:#132f46eb;}
+.large-map {display:block;width:min(100%,440px);height:auto;margin:14px auto;border-radius:10px;}
+@media(max-width:640px){#minimap {top:120px;right:12px;width:105px;height:120px;}}
+@media(max-height:500px){#minimap{display:none;}#tip{bottom:12px;max-width:40vw;} .topbar{flex-wrap:nowrap;}nav button{padding:6px 8px;}}

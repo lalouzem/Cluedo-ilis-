@@ -39,6 +39,7 @@ function createCampus(T, sceneRoot, actions) {
   let characters;
   let batches;
   let noteMeshes;
+  let stairMarkers;
 
   function material(color) {
     if (typeof color !== 'string') return color;
@@ -93,12 +94,12 @@ function createCampus(T, sceneRoot, actions) {
     return texture;
   }
 
-  const metal = '#536b7d';
+  const metal = '#304c5a';
   const dark = '#263b4d';
   const plaster = '#dbdedb';
   const white = '#eef2e9';
-  const red = '#b83038';
-  const oak = '#b4875f';
+  const red = '#cb3536';
+  const oak = '#c6a579';
   const daylight = new T.MeshBasicMaterial({ color: '#fff9e8', toneMapped: false });
   const glass = new T.MeshStandardMaterial({
     color: '#6095b5', transparent: true, opacity: 0.36, roughness: 0.25, depthWrite: false
@@ -139,7 +140,20 @@ function createCampus(T, sceneRoot, actions) {
     return new T.MeshStandardMaterial({ map: texture, roughness: 0.9 });
   }
 
-  const terrazzo = tiledMaterial('#718089', ['#bcc3c3', '#b4babc', '#c7cbca', '#aab3b8', '#c0c6c6']);
+  const woodTexture = canvasTexture(256, 512, (ctx,w,h) => {
+    ctx.fillStyle = '#cab28a'; ctx.fillRect(0,0,w,h);
+    for(let i=0;i<180;i++) {
+      ctx.fillStyle = i%3 ? '#9e805c15' : '#fff2cc25';
+      ctx.fillRect((i*73)%w,0,1+(i%2),h);
+    }
+    ctx.fillStyle='#947e61'; ctx.fillRect(0,0,2,h);
+  });
+  woodTexture.wrapS=woodTexture.wrapT=T.RepeatWrapping;
+  const wood = new T.MeshStandardMaterial({map:woodTexture, roughness:.75});
+  const grass = new T.MeshStandardMaterial({color:'#7d9164',roughness:1});
+  const redFloor = new T.MeshStandardMaterial({color:'#b96a59',roughness:.83});
+  const blueFloor = new T.MeshStandardMaterial({color:'#8cabb9',roughness:.8});
+  const terrazzo = tiledMaterial('#718089', ['#b2b1a9', '#a6aaa7', '#bcbcb4', '#a2a6a5', '#b6b8b0']);
   const linoleum = tiledMaterial('#a29d8e', ['#d1c5aa', '#d2cbb9', '#c9c3b2']);
   const carpet = tiledMaterial('#2c3847', ['#42515d', '#3e4e61', '#495460']);
   const sidewalk = tiledMaterial('#989f9e', ['#adb5b5', '#bfc4c0', '#c6c8bc']);
@@ -374,22 +388,29 @@ function createCampus(T, sceneRoot, actions) {
 
   function seats(x, z, w, d, front) {
     const rows = d >= 10 ? 5 : 4;
-    const shade = level % 2 ? '#386580' : '#305777';
+    const shade = '#c9ad80';
     const chairsPerSide = w >= 10 ? 4 : 3;
     for (let row = 0; row < rows; row++) {
       const rz = front + 2.5 + row * 1.30;
       const rise = row * 0.115;
-      addBox(x, (rise - 0.03) / 2, rz, w - 0.68, rise + 0.03, 1.27, '#485b69');
+      addBox(x, (rise - 0.03) / 2, rz, w - 0.68, rise + 0.03, 1.27, '#7f8480');
       addBox(x, rise + 0.014, rz - 0.62, w - 0.75, 0.027, 0.028, '#b9c1bc');
       for (const side of [-1, 1]) {
         for (let col = 0; col < chairsPerSide; col++) {
           chair(x + side * (0.93 + col * 0.70), rz, shade, rise);
+          addBox(x + side * (0.93 + col * 0.70),rise+.74,rz-.43,.69,.055,.40,wood);
+          if(col===0 || col===chairsPerSide-1) addBox(x+side*(.93+col*.70),rise+.37,rz-.43,.035,.74,.035,metal);
         }
       }
     }
-    addBox(x, 1.79, front + 0.16, w - 2.0, 1.65, 0.1, '#223544');
-    plaque('ILIS · Université de Lille', x, 1.82, front + 0.22, w - 2.35, 1.2, {
-      color: '#d5e4e5', ink: '#254960'
+    addBox(x, .57, front+.12,w-.22,1.14,.11,wood);
+    addBox(x, 1.79, front + 0.16, w - 2.0, 1.65, 0.1, '#f2f1e7');
+    addBox(x, 2.99, front+3.1,.07,.43,.07,metal);
+    addBox(x, 2.76, front+3.1,.48,.18,.34,'#e4e5df');
+    addBox(x, 2.75, front+2.92,.12,.10,.025,'#344c59');
+    for(const dx of [-1.7,1.7]) addBox(x+dx,2.95,front+.19,3.15,.40,.07,'#355560');
+    plaque('UNIVERSITÉ DE LILLE · ILIS\nSciences sanitaires et sociales\nLe trophée disparu', x, 1.82, front + 0.22, w - 2.35, 1.2, {
+      color: '#e6edf0', ink: '#305c83'
     });
     table(x - w / 2 + 1.15, front + 1.42, 1.0, 0.58, '#c5a47d');
   }
@@ -456,12 +477,15 @@ function createCampus(T, sceneRoot, actions) {
       return;
     }
     const info = type === 'info';
+    addBox(x,ceiling-.28,front+2.5,.42,.16,.30,'#d9ddd9');
+    addBox(x,ceiling-.13,front+2.5,.05,.25,.05,metal);
+    plaque('ILIS · UFR3S\nFormation · Santé · Innovation',x,1.79,front+.21,2.5,.92,{color:'#e5ebeb',ink:'#38617d'});
     addBox(x, 1.77, front + 0.17, Math.min(w - 1, 4.9), 1.2, 0.065, '#e9efea');
     addBox(x, 1.14, front + 0.205, Math.min(w - 1, 4.9), 0.055, 0.083, metal);
     for (const dx of [-2.05, 2.05]) {
       for (const dz of [0, 1.95]) {
-        table(x + dx, z + dz, 1.38, 0.64);
-        chair(x + dx, z + dz + 0.62, info ? '#456893' : '#41808b');
+        table(x + dx, z + dz, 1.65, 0.64, info ? '#d3cfbf' : '#b4c9c2');
+        chair(x + dx, z + dz + 0.62, info ? '#344c5c' : '#293b40');
         if (info) monitor(x + dx, z + dz - 0.06);
       }
     }
@@ -471,15 +495,15 @@ function createCampus(T, sceneRoot, actions) {
     const inner = wing + side * width / 2;
     const x = inner + side * w / 2;
     const outer = inner + side * w;
-    const volume = { name, wing, side, x, z, w, d };
+    const volume = { name, wing, side, x, z, w, d, type, index };
     rooms.push(volume);
     walkable(x, z, w + 0.10, d, name);
-    floorSurface(x, z, w, d, type === 'amphi' || type === 'lexim' ? carpet : linoleum);
+    floorSurface(x, z, w, d, type === 'lexim' ? carpet : type === 'amphi' ? linoleum : type === 'class' || type === 'cafe' ? redFloor : terrazzo);
     ceilingTiles(x, z, w, d);
     wall(x, z - d / 2, w, 0.16, white);
     wall(x, z + d / 2, w, 0.16, white);
     const end = (d - 1.88) / 2;
-    for (const dz of [-1, 1]) wall(inner, z + dz * (0.94 + end / 2), 0.16, end);
+    for (const dz of [-1, 1]) wall(inner, z + dz * (0.94 + end / 2), 0.16, end, wood);
     addBox(inner, 2.76, z, 0.16, 0.92, 1.88, plaster);
     if (['amphi', 'toilets', 'lexim'].includes(type)) {
       wall(outer, z, 0.17, d, type === 'lexim' ? '#514b68' : '#c6d0d0');
@@ -541,6 +565,7 @@ function createCampus(T, sceneRoot, actions) {
   function stairs(x, z, destination, arrival, direction = -1) {
     const title = destination > level ? 'Monter · ' + ILIS_LEVELS[destination].short : 'Descendre · ' + ILIS_LEVELS[destination].short;
     const use = () => actions.changeFloor(destination, arrival);
+    stairMarkers.push({x,z,title});
     for (let step = 0; step < 8; step++) {
       const height = 0.15 + step * 0.14;
       addBox(x, height / 2, z + direction * step * 0.235, 1.08, height, 0.24, '#6f8493', { action: use, title });
@@ -556,11 +581,11 @@ function createCampus(T, sceneRoot, actions) {
     const end = level === 3 ? -37.0 : corridorEnd;
     const length = facadeZ - end;
     const center = (facadeZ + end) / 2;
-    floorSurface(wing, center, width, length, terrazzo);
+    floorSurface(wing, center, width, length, level===1 || level===2 ? blueFloor : terrazzo);
     walkable(wing, center, width + 0.04, length, 'Couloir');
     ceilingTiles(wing, center, width, length);
     for (let z = facadeZ - 1; z > end; z -= 4.5) lightStrip(wing, z);
-    wall(wing, end, width, 0.16, '#b3c3cd');
+    wall(wing, end, width, 0.16, red);
     if (level > 0 || wing > 0) {
       windowPanel(wing, 1.75, facadeZ, width, 2.92, 'x');
     }
@@ -573,7 +598,17 @@ function createCampus(T, sceneRoot, actions) {
       occupied.sort((a, b) => a[0] - b[0]);
       const wallPart = (from, to) => {
         if (to - from < 0.07) return;
-        wall(x, (from + to) / 2, 0.15, to - from);
+        if(wing===0 && side===1) {
+          const panes=Math.ceil((to-from)/1.7), bay=(to-from)/panes;
+          for(let i=0;i<panes;i++) {
+            const pz=from+(i+.5)*bay;
+            windowPanel(x,1.62,pz,bay,3.14,'z');
+            addBox(x-.025,1.12,pz,.055,.055,bay,red);
+            addBox(x+.18,1.62,pz-bay/2,.32,3.22,.085,metal);
+          }
+          return;
+        }
+        wall(x, (from + to) / 2, 0.15, to - from,wood);
         addBox(x - side * 0.084, 0.12, (from + to) / 2, 0.025, 0.18, to - from, '#617484');
         addBox(x - side * 0.086, 1.16, (from + to) / 2, 0.026, 0.11, to - from, ILIS_LEVELS[level].accent);
       };
@@ -584,6 +619,14 @@ function createCampus(T, sceneRoot, actions) {
       }
       wallPart(start, facadeZ);
     }
+    for(let rz=end+5;rz<2;rz+=11) {
+      addBox(wing-width/2+.14,.65,rz,.14,.85,1.05,'#eee5ca');
+      for(let i=0;i<9;i++) addBox(wing-width/2+.22,.65,rz-.45+i*.11,.025,.76,.018,'#c8c1b0');
+      addBox(wing-width/2+.22,.16,rz-.52,.028,.32,.028,metal);
+    }
+    addBox(wing-1.85,1.05,1.9,.19,.60,.20,red);
+    plaque('EXTINCTEUR',wing-1.77,1.62,1.9,.42,.18,{color:red,yaw:Math.PI/2});
+    plaque('SORTIE  →',wing,2.85,end+.12,1,.27,{color:'#2d7555'});
     plaque(ILIS_LEVELS[level].hall, wing, 2.64, 3.78, 3.3, 0.46, {
       color: ILIS_LEVELS[level].accent
     });
@@ -608,6 +651,20 @@ function createCampus(T, sceneRoot, actions) {
         railing(mid, elevation, cut, span);
       }
       table(6.9, 4.7, 1.68, 0.64, '#c4ac88');
+      for(const x of [9,10.2,11.4]) {
+        addBox(x,.42,3.52,1.05,.18,.68,'#b64d80',{solid:true});
+        addBox(x,.73,3.23,1.05,.61,.13,'#b64d80');
+        addBox(x,.17,3.52,.80,.34,.36,metal);
+      }
+      addBox(5.2,.53,3.65,2.25,1.06,.65,wood,{solid:true});
+      addBox(5.2,1.09,3.65,2.4,.10,.79,'#595c59');
+      plaque('ACCUEIL · ILIS',5.2,.74,4.0,1.6,.32,{color:'#304c5a'});
+      monitor(5.6,3.65);
+      for(const x of [17.7,19.0]) {
+        addBox(x,.02,4.4,.52,.04,.52,'#d7dcd7');
+        addBox(x,.54,4.4,.055,1.05,.055,'#d7dcd7');
+        addBox(x,1.08,4.4,.78,.06,.78,'#f1eee5');
+      }
       planter(4.1, 7.8);
       addBox(0, 0.012, 7.45, 2.65, 0.019, 2.25, '#536573');
       for (const side of [-1, 1]) {
@@ -669,7 +726,24 @@ function createCampus(T, sceneRoot, actions) {
         addBox((from + to) / 2, y + 2.9, 7.98, to - from, 0.44, 0.42, '#607989');
       }
     }
-    addBox(-12.0, 4.8, 7.15, 2.5, 9.7, 1.95, '#304a64');
+    addBox(-12.0, 4.8, 7.15, 2.5, 9.7, 1.95, '#54606a');
+    // Portique rouge, grandes baies et brise-soleil d'après les références fournies.
+    addBox(-2.3,5.7,9.42,1.15,11.4,.75,red,{solid:true});
+    addBox(2.48,5.7,9.42,.9,11.4,.75,red,{solid:true});
+    for(const y of [3.35,6.8,10.95]) addBox(.05,y,9.46,5.75,.65,.82,red);
+    addBox(3.18,5.15,8.92,.5,10.3,.65,'#d0b98f',{solid:true});
+    for(const x of [3.66,3.88,4.1]) addBox(x,5.7,9.52,.075,11.4,.075,'#c4c9c6');
+    for(const [a,b] of [[-10.75,-2.9],[4.6,23],[26.2,34.5]]) {
+      for(const y of [2.6,3,6.05,6.45,9.5,9.9]) addBox((a+b)/2,y,9.28,b-a,.065,.55,'#31424a');
+    }
+    addBox(-5.1,1.0,12, .60,2,.20,'#d8d9d2',{solid:true});
+    plaque('Université\nde Lille\nILIS',-5.1,1.16,12.12,.54,1.3,{color:'#285c9e'});
+    for(const [x,col] of [[-9,'#4e5a63'],[10,'#b7bec2'],[15,'#485b6d']]) {
+      addBox(x,.48,14.6,1.75,.65,3.4,col,{solid:true});
+      addBox(x,.96,14.5,1.5,.55,1.7,skylineGlass);
+      for(const sx of [-.87,.87]) for(const sz of [-1.1,1.1]) sphere(world,'#263038',[x+sx,.33,14.6+sz],[.13,.33,.33]);
+      for(const sx of [-.55,.55]) addBox(x+sx,.6,16.32,.28,.14,.03,daylight);
+    }
     addBox(-1.49, 1.57, facadeZ, 0.31, 3.15, 0.52, red, { solid: true });
     addBox(1.49, 1.57, facadeZ, 0.31, 3.15, 0.52, red, { solid: true });
     addBox(0, 2.99, facadeZ, 3.26, 0.40, 0.54, red);
@@ -744,6 +818,7 @@ function createCampus(T, sceneRoot, actions) {
     characters = [];
     batches = new Map();
     noteMeshes = new Map();
+    stairMarkers = [];
     layouts[level].forEach(spec => room(...spec));
     if (level < 3) {
       corridor(0);
@@ -751,6 +826,12 @@ function createCampus(T, sceneRoot, actions) {
     }
     corridor(24);
     if (level === 0) exterior();
+    // Jardin visible au travers de la façade longitudinale.
+    floorSurface(9,-23,12,45,grass,-.10-floorGap*level);
+    for(let z=-8;z>-45;z-=7) {
+      addBox(12,1.5-floorGap*level,z,.19,3,.19,'#796449');
+      sphere(world,'#66845c',[12,3.4-floorGap*level,z],[1.1,1.6,1.1]);
+    }
     setPlacements();
 
     for (const { material: surface, meshes, sight } of batches.values()) {
@@ -801,7 +882,15 @@ function createCampus(T, sceneRoot, actions) {
     if (document) document.material = material('#71a695');
   }
 
-  return { build, isWalkable, placeName, aim, animate, markFound };
+  function groundHeight(x,z) {
+    const r=rooms.find(r=>r.type==='amphi' && Math.abs(x-r.x)<(r.w-.68)/2 && Math.abs(z-r.z)<r.d/2);
+    if(!r) return 0;
+    const row=Math.floor((z-(r.z-r.d/2+2.5)+.635)/1.30);
+    const rows=r.d>=10 ? 5:4;
+    return row>=0 && row<rows ? row*.115+.015 : 0;
+  }
+  function mapData(){return {floors,rooms,colliders,level,stairMarkers};}
+  return { build, isWalkable, placeName, aim, animate, markFound,groundHeight,mapData };
 }
 
 function portraitUrl(character) {

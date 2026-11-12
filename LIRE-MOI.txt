@@ -1,0 +1,57 @@
+CLUEDO ILIS 3D — ÉDITION 5
+Le trophée disparu
+
+OUVRIR LE JEU
+Décompresser le ZIP. Mettre tout son contenu sur un hébergement web
+(par exemple GitHub Pages), en conservant les dossiers assets et vendor.
+Ouvrir l'adresse du site dans Safari sur iPad, Chrome sur ordinateur,
+ou Meta Quest Browser sur casque. Le simple aperçu du ZIP dans Fichiers
+sur iPad ne permet pas de jouer.
+Sur ordinateur, un serveur local HTTP peut aussi servir ce dossier.
+La VR nécessite une adresse HTTPS (ou localhost).
+
+COMMANDES
+iPad / téléphone : maintenir les flèches à gauche pour marcher ; glisser
+sur le décor pour regarder. Les boutons ↶ et ↷ font tourner la vue.
+On peut marcher et regarder avec deux doigts en même temps.
+Toucher un indice / personnage à proximité, ou le viser puis toucher Agir.
+Plan : afficher l'étage et sa position ; points dorés = indices à trouver,
+verts = indices déjà lus ; flèches bleues = escaliers.
+Ordinateur : ZQSD / WASD / flèches ; glisser pour regarder ; E pour agir.
+Quest : stick gauche pour marcher, droit pour tourner ; gâchette pour agir ;
+poignée gauche pour le carnet, droite pour accuser.
+
+ENQUÊTE
+16 indices répartis sur quatre niveaux et le parvis. Ils éliminent des
+personnes, des objets et des lieux. Le carnet rassemble les indices.
+L'enquête est sauvegardée dans le navigateur. Sur la même adresse, les
+sauvegardes de la version précédente restent compatibles.
+Menu > Retour à l'entrée pour retrouver le hall ; Menu > Nouvelle enquête
+pour recommencer avec une nouvelle solution.
+
+CHANGEMENTS
+- Portique rouge, baies vitrées, brise-soleil, signalétique, voitures.
+- Couloirs vitrés, panneaux couleur bois, radiateurs et extincteurs.
+- Carrelage gris au RDC, sol bleu dans les couloirs des étages.
+- Hall avec accueil, banquettes roses et tables hautes.
+- Amphis avec tables et sièges bois, gradins, tableau et vidéoprojecteur.
+- Salles de cours avec sol rouge, tables claires et chaises sombres.
+- Petit plan permanent et grand plan de l'étage.
+- Boutons de rotation tactiles supplémentaires.
+- Moteur A-Frame 1.6.0 inclus localement ; portraits existants conservés.
+
+Les photos et vidéos fournies ont servi de références architecturales.
+Il s'agit d'une reconstitution stylisée, pas d'un relevé architectural exact.
+Les vidéos et photos des étudiants ne sont pas incorporées dans le jeu.
+Intrigue entièrement fictive et ludique, sans accusation réelle.
+
+VÉRIFICATIONS
+Construction des quatre niveaux et recherche de chemins sans collision :
+16/16 indices, tous les personnages et escaliers accessibles à portée
+d'interaction avec contrôle des obstacles visuels.
+Simulation des appuis, du maintien et du relâchement des commandes tactiles,
+collecte des 16 indices et résolution de l'enquête : réussies.
+Syntaxe des scripts et présence des fichiers : vérifiées.
+Le rendu WebGL et les gestes sur appareil iPad / Quest réel restent à tester.
+
+A-Frame : licence MIT, voir vendor/AFRAME-LICENSE.txt.

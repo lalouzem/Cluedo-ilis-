@@ -39,6 +39,7 @@ let lastHudAt = 0;
 let nextTurnAt = 0;
 let tipText = 'Entre dans l’accueil pour commencer l’enquête.';
 let game = loadSave();
+let turnHeld = 0;
 
 function newCase() {
   const solution = choices.map(group => Math.floor(Math.random() * group.length));
@@ -347,6 +348,7 @@ function showVRPanel(title, text, options) {
 }
 
 function clearMovement() {
+  turnHeld=0;
   heldKeys.clear();
   heldPointers.clear();
   dragLook = null;
@@ -394,6 +396,7 @@ function updateHud() {
   const name = campus.placeName(position.x, position.z);
   $('room').textContent = level === 0 && name === 'Couloir' && position.z > 3 ? 'Hall d’entrée' : name;
   $('count').textContent = game.found.length + '/16';
+  drawMap($('minimap'));
   if (!scene.is('vr-mode')) {
     ray.setFromCamera(viewPoint.set(0, 0), scene.camera);
     const inlineTarget = campus.aim(ray);
@@ -424,7 +427,13 @@ function frame(time, delta) {
       }
     }
   }
+  if(turnHeld && !$('modal').open && !vrPanel) {
+    look.yawObject.rotation.y += turnHeld*Math.min(delta||0,50)*.0018;
+    look.updateOrientation();
+  }
   moveBy(side, advance, 2.85 * Math.min(delta || 0, 50) / 1000);
+  const ground=campus.groundHeight(rig.object3D.position.x,rig.object3D.position.z);
+  rig.object3D.position.y += (ground-rig.object3D.position.y)*Math.min(1,(delta||16)/100);
   scene.camera.getWorldPosition(eye);
   campus.animate(eye);
   if (time - lastHudAt >= 100) {
@@ -534,10 +543,53 @@ function bindControls(canvas) {
     if (event.code === 'KeyE' && !event.repeat) interactAt();
   });
   window.addEventListener('keyup', event => heldKeys.delete(event.code));
+  $('mapbtn').addEventListener('click',openMap);
+  for(const [id,dir] of [['turnleft',1],['turnright',-1]]) {
+    const b=$(id);
+    b.addEventListener('pointerdown',e=>{e.preventDefault();capturePointer(b,e);turnHeld=dir;});
+    for(const event of ['pointerup','pointercancel','lostpointercapture']) b.addEventListener(event,()=>turnHeld=0);
+  }
   $('use').addEventListener('click', () => interactAt());
   $('book').addEventListener('click', openBook);
   $('accuse').addEventListener('click', () => accuse());
   $('help').addEventListener('click', help);
+}
+
+function drawMap(canvas,large=false) {
+  if(!canvas || !campus) return;
+  const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height;
+  const data=campus.mapData();
+  const bounds={left:-15,right:39,top:-46,bottom:level===0?31:11};
+  const scale=Math.min((w-24)/(bounds.right-bounds.left),(h-36)/(bounds.bottom-bounds.top));
+  const x=v=>12+(v-bounds.left)*scale, z=v=>27+(v-bounds.top)*scale;
+  ctx.fillStyle='#102437ed';ctx.fillRect(0,0,w,h);
+  ctx.font=(large?'16':'12')+'px system-ui';ctx.fillStyle='#f1d29d';ctx.fillText(ILIS_LEVELS[level].short+' · PLAN',12,18);
+  for(const f of data.floors){
+    ctx.fillStyle=f.name==='Parvis et abords'?'#304849':'#7a8a8d';
+    ctx.fillRect(x(f.x-f.w/2),z(f.z-f.d/2),f.w*scale,f.d*scale);
+  }
+  for(const r of data.rooms){
+    const rx=x(r.x-r.w/2),rz=z(r.z-r.d/2);
+    ctx.fillStyle=r.type==='amphi'?'#8f7155':'#456777';
+    ctx.fillRect(rx,rz,r.w*scale,r.d*scale);
+    ctx.strokeStyle='#b5c5c8';ctx.lineWidth=.7;ctx.strokeRect(rx,rz,r.w*scale,r.d*scale);
+    if(r.index!==null && r.index!==undefined){
+      ctx.fillStyle=game.found.includes(r.index)?'#77dbb0':'#ffcc72';
+      ctx.beginPath();ctx.arc(x(r.x),z(r.z),large?5:3,0,Math.PI*2);ctx.fill();
+    }
+    if(large){ctx.fillStyle='#fff';ctx.font='11px system-ui';ctx.textAlign='center';ctx.fillText(r.name,x(r.x),z(r.z)+16,r.w*scale-4);ctx.textAlign='left';}
+  }
+  for(const stair of data.stairMarkers){ctx.fillStyle='#a8d9ff';ctx.font=(large?'18':'13')+'px system-ui';ctx.textAlign='center';ctx.fillText('↕',x(stair.x),z(stair.z)+4);ctx.textAlign='left';}
+  const p=rig.object3D.position;
+  scene.camera.getWorldDirection(forward);
+  ctx.save();ctx.translate(x(p.x),z(p.z));ctx.rotate(Math.atan2(forward.x,-forward.z));
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(5,5);ctx.lineTo(0,3);ctx.lineTo(-5,5);ctx.closePath();ctx.fill();ctx.restore();
+}
+function openMap(){
+  if(scene.is('vr-mode')){help();return;}
+  showPanel('Plan · '+ILIS_LEVELS[level].title,'Flèche blanche : votre position. Points dorés : indices à trouver. Points verts : indices lus. Les flèches bleues indiquent les escaliers.');
+  const canvas=document.createElement('canvas');canvas.width=540;canvas.height=680;canvas.className='large-map';
+  $('modal').insertBefore(canvas,$('modal').querySelector('.dialog-actions'));drawMap(canvas,true);
 }
 
 function begin() {
